@@ -68,9 +68,62 @@ pub unsafe extern "C" fn generic_rust_malloc<T: Into<usize>>(size: T) -> *mut c_
 ///In case of invalid size, returns NULL pointer
 pub unsafe extern "C" fn generic_try_rust_malloc<T: TryInto<usize>>(size: T) -> *mut c_void {
     if let Ok(size) = size.try_into() {
-        rust_malloc(size.into())
+        rust_malloc(size)
     } else {
         unlikely_null()
+    }
+}
+
+#[inline]
+///Baseline `realloc` implementation with Rust allocator
+///
+///Returns NULL if size is 0 or overflows `isize::MAX`
+pub unsafe extern "C" fn rust_realloc(mut old_ptr: *mut c_void, mut new_size: usize) -> *mut c_void {
+    if new_size != 0 {
+        new_size = DEFAULT_ALIGNMENT.next(new_size + LAYOUT_OFFSET);
+
+        old_ptr = (old_ptr as *mut u8).offset(-(LAYOUT_OFFSET as isize)) as _;
+        let size = ptr::read(old_ptr as *const usize);
+        let layout = Layout::from_size_align_unchecked(size, DEFAULT_ALIGNMENT.into_raw());
+        let new_ptr = alloc::alloc::realloc(old_ptr as _, layout, new_size);
+        if !new_ptr.is_null() {
+            ptr::write(new_ptr as *mut usize, new_size);
+            return new_ptr.add(LAYOUT_OFFSET) as _;
+        }
+    }
+
+    unlikely_null()
+}
+
+#[inline]
+///Generic `realloc` implementation which requires size to be converted into `usize` without error
+pub unsafe extern "C" fn generic_rust_realloc<T: Into<usize>>(mem: *mut c_void, size: T) -> *mut c_void {
+    rust_realloc(mem, size.into())
+}
+
+#[inline]
+///Generic `realloc` implementation which allows size to be optionally convertable.
+///
+///In case of invalid size, returns NULL pointer
+pub unsafe extern "C" fn generic_try_rust_realloc<T: TryInto<usize>>(mem: *mut c_void, size: T) -> *mut c_void {
+    if let Ok(size) = size.try_into() {
+        rust_realloc(mem, size)
+    } else {
+        unlikely_null()
+    }
+}
+
+#[inline]
+///Returns size of allocated memory in pointer
+///
+///Returns 0 for NULL
+pub unsafe extern "C" fn rust_size(mem: *mut c_void) -> usize {
+    if !mem.is_null() {
+        let mem = (mem as *mut u8).offset(-(LAYOUT_OFFSET as isize));
+        let size = ptr::read(mem as *const usize);
+        size
+    } else {
+        0
     }
 }
 
