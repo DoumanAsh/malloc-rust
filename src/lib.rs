@@ -114,6 +114,26 @@ pub unsafe extern "C" fn generic_try_rust_realloc<T: TryInto<usize>>(mem: *mut c
 }
 
 #[inline]
+///Baseline `calloc` implementation with Rust allocator
+///
+///Returns NULL if size is 0 or overflows `isize::MAX`
+pub unsafe extern "C" fn rust_calloc(mut size: usize) -> *mut c_void {
+    if size != 0 {
+        size = DEFAULT_ALIGNMENT.next(size.saturating_add(LAYOUT_OFFSET));
+
+        if let Ok(layout) = Layout::from_size_align(size, DEFAULT_ALIGNMENT.into_raw()) {
+            let mem = alloc::alloc::alloc_zeroed(layout);
+            if !mem.is_null() {
+                ptr::write(mem as *mut usize, size);
+                return mem.add(LAYOUT_OFFSET) as _;
+            }
+        }
+    }
+
+    unlikely_null()
+}
+
+#[inline]
 ///Returns size of allocated memory in pointer
 ///
 ///Returns 0 for NULL

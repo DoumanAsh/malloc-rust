@@ -1,8 +1,9 @@
-use malloc_rust::{DEFAULT_ALIGNMENT, rust_malloc, rust_size, rust_free, generic_try_rust_malloc, rust_realloc, generic_try_rust_realloc};
-use core::mem;
+use malloc_rust::DEFAULT_ALIGNMENT;
+use malloc_rust::{rust_calloc, rust_malloc, rust_size, rust_free, generic_try_rust_malloc, rust_realloc, generic_try_rust_realloc};
+use core::{mem, slice};
 
 #[test]
-fn mem_should_allocate_memory() {
+fn mem_should_malloc_memory() {
     const SIZE: usize = 10;
     const INT_SIZE: i32 = SIZE as _;
 
@@ -24,6 +25,27 @@ fn mem_should_allocate_memory() {
         assert!(ptr.is_aligned());
         assert_eq!(rust_size(ptr), expected_size);
         let ptr = generic_try_rust_realloc(ptr, INT_SIZE + 1);
+        assert!(!ptr.is_null());
+        assert!(ptr.is_aligned());
+        assert_eq!(rust_size(ptr), expected_size);
+        rust_free(ptr);
+    }
+}
+
+#[test]
+fn mem_should_calloc_memory() {
+    const SIZE: usize = 10;
+
+    let expected_size = DEFAULT_ALIGNMENT.next(SIZE + mem::size_of::<usize>());
+    unsafe {
+        let ptr = rust_calloc(SIZE);
+        assert!(!ptr.is_null());
+        assert!(ptr.is_aligned());
+        assert_eq!(rust_size(ptr), expected_size);
+        let slice = slice::from_raw_parts(ptr as *const u8, expected_size - mem::size_of::<usize>());
+        assert!(slice.iter().all(|byt| *byt == 0));
+
+        let ptr = rust_realloc(ptr, SIZE + 1);
         assert!(!ptr.is_null());
         assert!(ptr.is_aligned());
         assert_eq!(rust_size(ptr), expected_size);
