@@ -1,10 +1,10 @@
 [package]
 name = "malloc-rust"
-version = "1.0.0-beta.1"
+version = "1.0.0-beta.2"
 edition = "2018"
-description = "Implementation of xxhash"
+description = "Malloc implementation using Rust allocator"
 readme = "README.md"
-repository = "https://github.com/DoumanAsh/xxhash-rust"
+repository = "https://github.com/DoumanAsh/malloc-rust"
 license = "BSL-1.0"
 keywords = ["malloc", "allocator"]
 categories = ["no-std", "memory-management"]
