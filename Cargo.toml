@@ -1,6 +1,6 @@
 [package]
 name = "malloc-rust"
-version = "1.0.0"
+version = "1.0.0-beta.1"
 edition = "2018"
 description = "Implementation of xxhash"
 readme = "README.md"
