@@ -38,6 +38,13 @@ fn unlikely_null() -> *mut c_void {
     ptr::null_mut()
 }
 
+#[inline(always)]
+unsafe fn get_ptr_size(ptr: *mut c_void) -> usize {
+    let mem = (ptr as *mut u8).offset(-(LAYOUT_OFFSET as isize));
+    let size = ptr::read(mem as *const usize);
+    size.saturating_sub(LAYOUT_OFFSET)
+}
+
 #[inline]
 ///Baseline `malloc` implementation with Rust allocator
 ///
@@ -120,19 +127,14 @@ pub unsafe extern "C" fn generic_try_rust_realloc<T: TryInto<usize>>(mem: *mut c
 ///
 ///Returns NULL if size is 0 or overflows `isize::MAX`
 pub unsafe extern "C" fn rust_calloc(mut size: usize) -> *mut c_void {
-    if size != 0 {
-        size = LAYOUT_OFFSET.saturating_add(DEFAULT_ALIGNMENT.next(size));
-
-        if let Ok(layout) = Layout::from_size_align(size, DEFAULT_ALIGNMENT.into_raw()) {
-            let mem = alloc::alloc::alloc_zeroed(layout);
-            if !mem.is_null() {
-                ptr::write(mem as *mut usize, size);
-                return mem.add(LAYOUT_OFFSET) as _;
-            }
-        }
+    let ptr = rust_malloc(size);
+    if !ptr.is_null() {
+        size = get_ptr_size(ptr);
+        ptr::write_bytes(ptr as *mut u8, 0, size);
+        ptr
+    } else {
+        unlikely_null()
     }
-
-    unlikely_null()
 }
 
 #[inline]
@@ -141,9 +143,7 @@ pub unsafe extern "C" fn rust_calloc(mut size: usize) -> *mut c_void {
 ///Returns 0 for NULL
 pub unsafe extern "C" fn rust_size(mem: *mut c_void) -> usize {
     if !mem.is_null() {
-        let mem = (mem as *mut u8).offset(-(LAYOUT_OFFSET as isize));
-        let size = ptr::read(mem as *const usize);
-        size.saturating_sub(LAYOUT_OFFSET)
+        get_ptr_size(mem)
     } else {
         0
     }
