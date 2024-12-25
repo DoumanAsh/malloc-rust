@@ -66,6 +66,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y valgrind
 
+    - name: Install Miri
+      run: |
+        rustup toolchain install nightly
+        rustup +nightly component add miri
+
     - name: Rust version
       run: |
         cargo --version
@@ -81,6 +86,9 @@ jobs:
       env:
         CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER: "valgrind --leak-check=full --error-exitcode=1 --suppressions=valgrind.supp"
       run: cargo test --release
+
+    - name: Miri Test
+      run: cargo +nightly miri test
 
   cross-platform-test:
     needs: [full-test, min-rust-check]
