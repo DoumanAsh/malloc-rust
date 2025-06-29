@@ -30,7 +30,7 @@ pub const DEFAULT_ALIGNMENT: align::Alignment = {
 
 //It is actually fine not to store original size as most system allocators do not require it
 //but we cannot trust Rust ecosystem not to screw us up
-const LAYOUT_OFFSET: usize = mem::size_of::<usize>();
+const LAYOUT_OFFSET: usize = DEFAULT_ALIGNMENT.next(mem::size_of::<usize>());
 
 #[cold]
 #[inline(never)]
